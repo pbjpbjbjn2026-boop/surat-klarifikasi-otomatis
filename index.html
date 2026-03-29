@@ -381,10 +381,10 @@ function generateLetter() {
 
   let tenderRows = '';
   if (tenderData.length === 0) {
-    tenderRows = `<tr><td colspan="2" style="color:#aaa;font-style:italic;text-align:center;">Belum ada peserta</td></tr>`;
+    tenderRows = `<tr><td colspan="3" style="color:#aaa;font-style:italic;text-align:center;">Belum ada peserta</td></tr>`;
   } else {
-    tenderData.forEach(r => {
-      tenderRows += `<tr><td>${r.nama || '-'}</td><td>${r.noSurat || '-'}</td></tr>`;
+    tenderData.forEach((r, i) => {
+      tenderRows += `<tr><td style="width:36px;text-align:center;">${i + 1}</td><td>${r.nama || '-'}</td><td>${r.noSurat || '-'}</td></tr>`;
     });
   }
 
@@ -423,7 +423,7 @@ function generateLetter() {
       </div>
 
       <table class="letter-table">
-        <thead><tr><th>Nama Peserta Tender</th><th>No Surat</th></tr></thead>
+        <thead><tr><th style="width:36px;">No.</th><th>Nama Peserta Tender</th><th>No Surat</th></tr></thead>
         <tbody>${tenderRows}</tbody>
       </table>
 
@@ -457,21 +457,33 @@ function downloadPDF() {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
   const pageW = 210;
-  const marginL = 25, marginR = 25;
+  const pageH = 297;
+  const marginL = 25, marginR = 25, marginTop = 20, marginBottom = 20;
   const contentW = pageW - marginL - marginR;
-  let y = 20;
+  const maxY = pageH - marginBottom;
+  let y = marginTop;
 
   const font = 'times';
   const fontSz = 11;
 
-  // Helper: wrapped text, returns new Y
+  // ── Helper: check page break ──
+  function checkPageBreak(neededH) {
+    if (y + neededH > maxY) {
+      doc.addPage();
+      y = marginTop;
+    }
+  }
+
+  // ── Helper: wrapped text, returns new Y ──
   function wrapText(text, x, startY, maxW, lineH, align) {
     const lines = doc.splitTextToSize(text, maxW);
     lines.forEach(line => {
+      checkPageBreak(lineH);
       if (align === 'center') doc.text(line, pageW / 2, startY, { align: 'center' });
       else if (align === 'right') doc.text(line, x + maxW, startY, { align: 'right' });
       else doc.text(line, x, startY);
       startY += lineH;
+      y = startY;
     });
     return startY;
   }
@@ -493,6 +505,7 @@ function downloadPDF() {
   // ── DATE right ──
   doc.setFont(font, 'normal');
   doc.setFontSize(fontSz);
+  checkPageBreak(8);
   doc.text(`Bojonegoro, ${d.tanggal}`, pageW - marginR, y, { align: 'right' });
   y += 8;
 
@@ -506,15 +519,17 @@ function downloadPDF() {
     ['Perihal', `Klarifikasi Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material`],
   ];
   meta.forEach(([k, v]) => {
+    const lines = doc.splitTextToSize(v, contentW - 33);
+    checkPageBreak(lines.length * lineH);
     doc.text(k, col1, y);
     doc.text(':', col2, y);
-    const lines = doc.splitTextToSize(v, contentW - 33);
     lines.forEach((line, i) => doc.text(line, col3, y + i * lineH));
     y += lines.length * lineH;
   });
   y += 6;
 
   // ── TO ──
+  checkPageBreak(lineH * 4);
   doc.text('Yth. Direktur', col1, y); y += lineH;
   doc.setFont(font, 'bold');
   doc.text(d.namaPabrikan || '[Nama Pabrikan]', col1, y); y += lineH;
@@ -525,28 +540,69 @@ function downloadPDF() {
   const body1 = `Bersama ini kami mohon bantuan Saudara terkait klarifikasi keabsahan Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material ${d.bahan || '[Bahan]'} dari untuk paket pekerjaan ${d.namaPaket || '[Nama Paket]'} di Kabupaten Bojonegoro Tahun Anggaran 2026. Berikut ini kami sampaikan data peserta tender yang melampirkan Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material ${d.bahan || '[Bahan]'} dari ${d.namaPabrikan || '[Nama Pabrikan]'}, yaitu:`;
   const indentX = col1 + 10;
   const indentW = contentW - 10;
+  // Helper: justify a single line of text
+  function justifyLine(line, x, curY, maxW) {
+    const words = line.trim().split(' ');
+    if (words.length <= 1) { doc.text(line, x, curY); return; }
+    const totalWordsW = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
+    const gap = (maxW - totalWordsW) / (words.length - 1);
+    let cx = x;
+    words.forEach((w, i) => {
+      doc.text(w, cx, curY);
+      cx += doc.getTextWidth(w) + gap;
+    });
+  }
+
   const b1lines = doc.splitTextToSize(body1, indentW);
-  b1lines.forEach(line => { doc.text(line, indentX, y); y += 5.5; });
+  b1lines.forEach((line, i) => {
+    checkPageBreak(5.5);
+    const isLast = i === b1lines.length - 1;
+    if (!isLast) {
+      justifyLine(line, indentX, y, indentW);
+    } else {
+      doc.text(line, indentX, y);
+    }
+    y += 5.5;
+  });
   y += 3;
 
-  // ── TABLE ──
-  const colW1 = contentW * 0.6, colW2 = contentW * 0.4;
+  // ── TABLE with multi-page support ──
+  const colW0 = 12, colW1 = (contentW - 12) * 0.6, colW2 = (contentW - 12) * 0.4;
   const tRows = d.tenderData.length ? d.tenderData : [{ nama: '', noSurat: '' }];
   const rowH = 8;
-  // header row
-  doc.setFillColor(240, 240, 240);
-  doc.rect(marginL, y, colW1, rowH, 'FD');
-  doc.rect(marginL + colW1, y, colW2, rowH, 'FD');
-  doc.setFont(font, 'bold');
-  doc.text('Nama Peserta Tender', marginL + colW1 / 2, y + 5.5, { align: 'center' });
-  doc.text('No Surat', marginL + colW1 + colW2 / 2, y + 5.5, { align: 'center' });
-  y += rowH;
-  doc.setFont(font, 'normal');
-  tRows.forEach(r => {
-    doc.rect(marginL, y, colW1, rowH);
-    doc.rect(marginL + colW1, y, colW2, rowH);
-    doc.text(r.nama || '-', marginL + colW1 / 2, y + 5.5, { align: 'center' });
-    doc.text(r.noSurat || '-', marginL + colW1 + colW2 / 2, y + 5.5, { align: 'center' });
+
+  // Draw table header function (reused on new pages)
+  function drawTableHeader() {
+    checkPageBreak(rowH);
+    doc.setFillColor(240, 240, 240);
+    doc.rect(marginL, y, colW0, rowH, 'FD');
+    doc.rect(marginL + colW0, y, colW1, rowH, 'FD');
+    doc.rect(marginL + colW0 + colW1, y, colW2, rowH, 'FD');
+    doc.setFont(font, 'bold');
+    doc.text('No.', marginL + colW0 / 2, y + 5.5, { align: 'center' });
+    doc.text('Nama Peserta Tender', marginL + colW0 + colW1 / 2, y + 5.5, { align: 'center' });
+    doc.text('No Surat', marginL + colW0 + colW1 + colW2 / 2, y + 5.5, { align: 'center' });
+    doc.setFont(font, 'normal');
+    y += rowH;
+  }
+
+  drawTableHeader();
+
+  tRows.forEach((r, idx) => {
+    // If row would overflow, add new page and redraw header
+    if (y + rowH > maxY) {
+      doc.addPage();
+      y = marginTop;
+      drawTableHeader();
+    }
+    doc.rect(marginL, y, colW0, rowH);
+    doc.rect(marginL + colW0, y, colW1, rowH);
+    doc.rect(marginL + colW0 + colW1, y, colW2, rowH);
+    const namaText = doc.splitTextToSize(r.nama || '-', colW1 - 4)[0];
+    const suratText = doc.splitTextToSize(r.noSurat || '-', colW2 - 4)[0];
+    doc.text(String(idx + 1), marginL + colW0 / 2, y + 5.5, { align: 'center' });
+    doc.text(namaText, marginL + colW0 + colW1 / 2, y + 5.5, { align: 'center' });
+    doc.text(suratText, marginL + colW0 + colW1 + colW2 / 2, y + 5.5, { align: 'center' });
     y += rowH;
   });
   y += 5;
@@ -554,13 +610,27 @@ function downloadPDF() {
   // ── BODY paragraph 2 ──
   const body2 = `Apakah benar ${d.namaPabrikan || '[Nama Pabrikan]'} telah menerbitkan Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material ${d.bahan || '[Bahan]'} kepada peserta tender sebagaimana tercantum di atas?`;
   const b2lines = doc.splitTextToSize(body2, indentW);
-  b2lines.forEach(line => { doc.text(line, indentX, y); y += 5.5; });
+  b2lines.forEach((line, i) => {
+    checkPageBreak(5.5);
+    const isLast = i === b2lines.length - 1;
+    if (!isLast) justifyLine(line, indentX, y, indentW);
+    else doc.text(line, indentX, y);
+    y += 5.5;
+  });
   y += 5;
   const b3lines = doc.splitTextToSize('Atas perhatian dan klarifikasi yang diberikan, kami ucapkan terima kasih.', indentW);
-  b3lines.forEach(line => { doc.text(line, indentX, y); y += 5.5; });
+  b3lines.forEach((line, i) => {
+    checkPageBreak(5.5);
+    const isLast = i === b3lines.length - 1;
+    if (!isLast) justifyLine(line, indentX, y, indentW);
+    else doc.text(line, indentX, y);
+    y += 5.5;
+  });
   y += 12;
 
-  // ── FOOTER ──
+  // ── FOOTER — if not enough space, move to new page ──
+  const footerH = 6 + 6 + 24 + 6; // POKJA + UKPBJ + space + ttd
+  checkPageBreak(footerH);
   const cx = pageW - marginR - 30;
   doc.setFont(font, 'bold');
   doc.text('POKJA PEMILIHAN', cx, y, { align: 'center' }); y += 6;
