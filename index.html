@@ -277,18 +277,26 @@
       <input type="text" id="tujuan" placeholder="contoh: Dukungan">
     </div>
     <div class="field">
+      <label>Jenis Hubungan (Kerjasama / Kemitraan / dll)</label>
+      <input type="text" id="jenisHubungan" placeholder="contoh: Kerjasama" value="Kerjasama">
+    </div>
+    <div class="field">
       <label>Nama Pabrikan / Produsen</label>
       <input type="text" id="namaPabrikan" placeholder="contoh: PT. Semen Indonesia">
     </div>
 
     <div class="divider">Detail Pekerjaan</div>
     <div class="field">
-      <label>Jenis Bahan / Material</label>
-      <input type="text" id="bahan" placeholder="contoh: Aspal, Baja Tulangan, dll">
+      <label>Jenis Material (Cat / Aspal / Baja / dll)</label>
+      <input type="text" id="bahan" placeholder="contoh: Cat, Aspal, Baja Tulangan, dll">
     </div>
     <div class="field">
       <label>Nama Paket Pekerjaan</label>
       <textarea id="namaPaket" placeholder="contoh: Pembangunan Jalan Raya..."></textarea>
+    </div>
+    <div class="field">
+      <label>Tahun Anggaran</label>
+      <input type="text" id="tahunAnggaran" placeholder="contoh: 2026" value="2026">
     </div>
 
     <div class="divider">Peserta Tender</div>
@@ -371,12 +379,14 @@ function generateLetter() {
   const tanggal = formatTanggal(document.getElementById('tanggal').value);
   const noPaket = document.getElementById('noPaket').value.trim();
   const tujuan = document.getElementById('tujuan').value.trim();
+  const jenisHubungan = document.getElementById('jenisHubungan').value.trim() || 'Kerjasama';
   const namaPabrikan = document.getElementById('namaPabrikan').value.trim();
   const bahan = document.getElementById('bahan').value.trim();
   const namaPaket = document.getElementById('namaPaket').value.trim();
+  const tahunAnggaran = document.getElementById('tahunAnggaran').value.trim() || '2026';
   const tenderData = getTenderData();
 
-  const nomorSurat = `000.3/ ${noPaket || '...'} / KLA.B / 412.023 / 2026`;
+  const nomorSurat = `000.3/ ${noPaket || '...'} / KLA.B / 412.023 / ${tahunAnggaran}`;
 
   let tenderRows = '';
   if (tenderData.length === 0) {
@@ -407,7 +417,7 @@ function generateLetter() {
           <tr><td>No</td><td>:</td><td>${nomorSurat}</td></tr>
           <tr><td>Sifat</td><td>:</td><td>Penting</td></tr>
           <tr><td>Lampiran</td><td>:</td><td>-</td></tr>
-          <tr><td>Perihal</td><td>:</td><td>Klarifikasi Surat ${ph(tujuan,'Tujuan')} Kerjasama Material</td></tr>
+          <tr><td>Perihal</td><td>:</td><td>Klarifikasi Surat ${ph(tujuan,'Tujuan')} ${ph(jenisHubungan,'Jenis Hubungan')} Material</td></tr>
         </table>
       </div>
 
@@ -418,7 +428,7 @@ function generateLetter() {
       </div>
 
       <div class="letter-body">
-        <p>Bersama ini kami mohon bantuan Saudara terkait klarifikasi keabsahan Surat ${ph(tujuan,'Tujuan')} Kerjasama Material ${ph(bahan,'Bahan')} dari untuk paket pekerjaan ${ph(namaPaket,'Nama Paket')} di Kabupaten Bojonegoro Tahun Anggaran 2026. Berikut ini kami sampaikan data peserta tender yang melampirkan Surat ${ph(tujuan,'Tujuan')} Kerjasama Material ${ph(bahan,'Bahan')} dari ${ph(namaPabrikan,'Nama Pabrikan')}, yaitu:</p>
+        <p>Bersama ini kami mohon bantuan Saudara terkait klarifikasi keabsahan Surat ${ph(tujuan,'Tujuan')} ${ph(jenisHubungan,'Jenis Hubungan')} Material ${ph(bahan,'Bahan')} dari untuk paket pekerjaan ${ph(namaPaket,'Nama Paket')} di Kabupaten Bojonegoro Tahun Anggaran ${tahunAnggaran || '2026'}. Berikut ini kami sampaikan data peserta tender yang melampirkan Surat ${ph(tujuan,'Tujuan')} ${ph(jenisHubungan,'Jenis Hubungan')} Material ${ph(bahan,'Bahan')} dari ${ph(namaPabrikan,'Nama Pabrikan')}, yaitu:</p>
       </div>
 
       <table class="letter-table">
@@ -427,7 +437,7 @@ function generateLetter() {
       </table>
 
       <div class="letter-body" style="margin-top:16px;">
-        <p>Apakah benar ${ph(namaPabrikan,'Nama Pabrikan')} telah menerbitkan Surat ${ph(tujuan,'Tujuan')} Kerjasama Material ${ph(bahan,'Bahan')} kepada peserta tender sebagaimana tercantum di atas?</p>
+        <p>Apakah benar ${ph(namaPabrikan,'Nama Pabrikan')} telah menerbitkan Surat ${ph(tujuan,'Tujuan')} ${ph(jenisHubungan,'Jenis Hubungan')} Material ${ph(bahan,'Bahan')} kepada peserta tender sebagaimana tercantum di atas?</p>
         <p style="text-indent:40px;">Atas perhatian dan klarifikasi yang diberikan, kami ucapkan terima kasih.</p>
       </div>
 
@@ -445,7 +455,7 @@ function generateLetter() {
   document.getElementById('btnDownload').disabled = false;
 
   // Store data for download
-  window._letterData = { tanggal, noPaket, tujuan, namaPabrikan, bahan, namaPaket, tenderData, tanggalRaw: document.getElementById('tanggal').value };
+  window._letterData = { tanggal, noPaket, tujuan, jenisHubungan, namaPabrikan, bahan, namaPaket, tahunAnggaran, tenderData, tanggalRaw: document.getElementById('tanggal').value };
 }
 
 function downloadPDF() {
@@ -512,10 +522,10 @@ function downloadPDF() {
   const col1 = marginL, col2 = marginL + 28, col3 = marginL + 33;
   const lineH = 6;
   const meta = [
-    ['No', `000.3/ ${d.noPaket || '...'} / KLA.B / 412.023 / 2026`],
+    ['No', `000.3/ ${d.noPaket || '...'} / KLA.B / 412.023 / ${d.tahunAnggaran || '2026'}`],
     ['Sifat', 'Penting'],
     ['Lampiran', '-'],
-    ['Perihal', `Klarifikasi Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material`],
+    ['Perihal', `Klarifikasi Surat ${d.tujuan || '[Tujuan]'} ${d.jenisHubungan || 'Kerjasama'} Material`],
   ];
   meta.forEach(([k, v]) => {
     const lines = doc.splitTextToSize(v, contentW - 33);
@@ -536,7 +546,7 @@ function downloadPDF() {
   doc.text('di Tempat', col1, y); y += lineH * 2;
 
   // ── BODY paragraph 1 ──
-  const body1 = `Bersama ini kami mohon bantuan Saudara terkait klarifikasi keabsahan Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material ${d.bahan || '[Bahan]'} dari untuk paket pekerjaan ${d.namaPaket || '[Nama Paket]'} di Kabupaten Bojonegoro Tahun Anggaran 2026. Berikut ini kami sampaikan data peserta tender yang melampirkan Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material ${d.bahan || '[Bahan]'} dari ${d.namaPabrikan || '[Nama Pabrikan]'}, yaitu:`;
+  const body1 = `Bersama ini kami mohon bantuan Saudara terkait klarifikasi keabsahan Surat ${d.tujuan || '[Tujuan]'} ${d.jenisHubungan || 'Kerjasama'} Material ${d.bahan || '[Bahan]'} dari untuk paket pekerjaan ${d.namaPaket || '[Nama Paket]'} di Kabupaten Bojonegoro Tahun Anggaran ${d.tahunAnggaran || '2026'}. Berikut ini kami sampaikan data peserta tender yang melampirkan Surat ${d.tujuan || '[Tujuan]'} ${d.jenisHubungan || 'Kerjasama'} Material ${d.bahan || '[Bahan]'} dari ${d.namaPabrikan || '[Nama Pabrikan]'}, yaitu:`;
   const indentX = col1 + 10;
   const indentW = contentW - 10;
   // Helper: justify a single line of text
@@ -607,7 +617,7 @@ function downloadPDF() {
   y += 5;
 
   // ── BODY paragraph 2 ──
-  const body2 = `Apakah benar ${d.namaPabrikan || '[Nama Pabrikan]'} telah menerbitkan Surat ${d.tujuan || '[Tujuan]'} Kerjasama Material ${d.bahan || '[Bahan]'} kepada peserta tender sebagaimana tercantum di atas?`;
+  const body2 = `Apakah benar ${d.namaPabrikan || '[Nama Pabrikan]'} telah menerbitkan Surat ${d.tujuan || '[Tujuan]'} ${d.jenisHubungan || 'Kerjasama'} Material ${d.bahan || '[Bahan]'} kepada peserta tender sebagaimana tercantum di atas?`;
   const b2lines = doc.splitTextToSize(body2, indentW);
   b2lines.forEach((line, i) => {
     checkPageBreak(5.5);
