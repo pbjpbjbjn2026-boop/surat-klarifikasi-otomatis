@@ -282,6 +282,17 @@
       <label>No Paket</label>
       <input type="text" id="noPaket" placeholder="contoh: 001">
     </div>
+    <div class="field">
+      <label>Lampiran</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <select id="lampiranTipe" style="width:160px;">
+          <option value="-">- (Tidak ada)</option>
+          <option value="lembar">Jumlah lembar</option>
+        </select>
+        <input type="number" id="lampiranJumlah" min="1" max="999" placeholder="Jumlah" style="width:100px;display:none;">
+        <span id="lampiranSatuan" style="display:none;font-size:14px;color:#555;">lembar</span>
+      </div>
+    </div>
 
     <div class="divider">Tujuan & Pabrikan</div>
     <div class="field">
@@ -429,7 +440,7 @@ function generateLetter() {
         <table>
           <tr><td>No</td><td>:</td><td>${nomorSurat}</td></tr>
           <tr><td>Sifat</td><td>:</td><td>Penting</td></tr>
-          <tr><td>Lampiran</td><td>:</td><td>-</td></tr>
+          <tr><td>Lampiran</td><td>:</td><td>${getLampiranText()}</td></tr>
           <tr><td>Perihal</td><td>:</td><td>Klarifikasi Surat ${ph(tujuan,'Tujuan')} ${ph(jenisHubungan,'Jenis Hubungan')} Material</td></tr>
         </table>
       </div>
@@ -451,12 +462,12 @@ function generateLetter() {
 
       <div class="letter-body" style="margin-top:16px;">
         <p>Apakah benar ${ph(namaPabrikan,'Nama Pabrikan')} telah menerbitkan Surat ${ph(tujuan,'Tujuan')} ${ph(jenisHubungan,'Jenis Hubungan')} Material ${ph(bahan,'Bahan')} kepada peserta tender sebagaimana tercantum di atas?</p>
-        <p style="text-indent:40px;">Atas perhatian dan klarifikasi yang diberikan, kami ucapkan terima kasih.</p>
+        <p style="text-indent:40px;">Atas perhatian dan jawaban klarifikasi yang diberikan, kami ucapkan terima kasih.</p>
       </div>
 
       <div class="letter-footer">
         <div class="letter-footer-inner">
-          POKJA PEMILIHAN<br>
+          POKJA PEMILIHAN ${ph(noPaket,'No Paket')}  <br>
           UKPBJ KABUPATEN BOJONEGORO<br>
           <br><br><br><br>
           ttd
@@ -468,7 +479,7 @@ function generateLetter() {
   document.getElementById('btnDownload').disabled = false;
 
   // Store data for download
-  window._letterData = { tanggal, noPaket, tujuan, jenisHubungan, namaPabrikan, bahan, namaPaket, tahunAnggaran, tenderData, tanggalRaw: document.getElementById('tanggal').value };
+  window._letterData = { tanggal, noPaket, tujuan, jenisHubungan, namaPabrikan, bahan, namaPaket, tahunAnggaran, tenderData, tanggalRaw: document.getElementById('tanggal').value, lampiran: getLampiranText() };
 }
 
 function downloadPDF() {
@@ -542,7 +553,7 @@ function downloadPDF() {
   const meta = [
     ['No', `000.3/ ${d.noPaket || '...'} / KLA.B / 412.023 / ${d.tahunAnggaran || '2026'}`],
     ['Sifat', 'Penting'],
-    ['Lampiran', '-'],
+    ['Lampiran', d.lampiran || '-'],
     ['Perihal', `Klarifikasi Surat ${d.tujuan || '[Tujuan]'} ${d.jenisHubungan || 'Kerjasama'} Material`],
   ];
   meta.forEach(([k, v]) => {
@@ -645,7 +656,7 @@ function downloadPDF() {
     y += 5.5;
   });
   y += 5;
-  const b3lines = doc.splitTextToSize('Atas perhatian dan klarifikasi yang diberikan, kami ucapkan terima kasih.', indentW);
+  const b3lines = doc.splitTextToSize('Atas perhatian dan jawaban klarifikasi yang diberikan, kami ucapkan terima kasih.', indentW);
   b3lines.forEach((line, i) => {
     checkPageBreak(5.5);
     const isLast = i === b3lines.length - 1;
@@ -660,7 +671,7 @@ function downloadPDF() {
   checkPageBreak(footerH);
   const cx = pageW - marginR - 30;
   doc.setFont(font, 'bold');
-  doc.text('POKJA PEMILIHAN', cx, y, { align: 'center' }); y += 6;
+  doc.text('POKJA PEMILIHAN ' + (d.noPaket || '...'), cx, y, { align: 'center' }); y += 6;
   doc.text('UKPBJ KABUPATEN BOJONEGORO', cx, y, { align: 'center' }); y += 24;
   doc.setFont(font, 'normal');
   doc.text('ttd', cx, y, { align: 'center' });
@@ -671,6 +682,20 @@ function downloadPDF() {
 
 // Init with one tender row
 addTenderRow();
+
+// Lampiran toggle logic
+document.getElementById('lampiranTipe').addEventListener('change', function() {
+  const isLembar = this.value === 'lembar';
+  document.getElementById('lampiranJumlah').style.display = isLembar ? 'inline-block' : 'none';
+  document.getElementById('lampiranSatuan').style.display = isLembar ? 'inline-block' : 'none';
+});
+
+function getLampiranText() {
+  const tipe = document.getElementById('lampiranTipe').value;
+  if (tipe === '-') return '-';
+  const jml = parseInt(document.getElementById('lampiranJumlah').value) || 1;
+  return jml + ' lembar';
+}
 </script>
 </body>
 </html>
